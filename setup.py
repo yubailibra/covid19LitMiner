@@ -30,7 +30,7 @@ setup(
     packages=find_packages(),
     install_requires=requirements,
     license="MIT license",
-    description='ScispaCy-based natural langurage processing pipeline for scientific literature mining',
+    description='ScispaCy-based natural language processing pipeline for scientific literature mining',
     keywords='scireader',
     classifiers=[
         'Intended Audience :: Science/Research',
