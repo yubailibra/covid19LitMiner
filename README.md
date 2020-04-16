@@ -1,5 +1,5 @@
 # scireader
-SciReader is a ScispaCy-based natural language processing pipeline for scientific literature mining. 　
+SciReader is a ScispaCy-based natural language processing pipeline for scientific literature mining. To help combat the COVID-19 pandemic, it has been applied to find the most relevant literature given a query research topic.
 
 ### Python Dependencies and Requirements:
 [spacy: 2.2.1](https://github.com/explosion/spaCy)  
