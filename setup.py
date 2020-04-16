@@ -22,7 +22,7 @@ author = (
 setup(
     name='scireader',
     python_requires=">=3.6",
-    version='0.0.2',
+    version='0.0.3',
     author=author,
     author_email='yubailibra@yahoo.com',
     url='https://github.com/yubailibra/scireader',
