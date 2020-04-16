@@ -13,7 +13,8 @@ requirements = [
     'pandas>=0.25.3',
     'scikit-learn>=0.21.3',
     #'re>=2.2.1',
-    'json>=2.0.9']
+    #'json>=2.0.9'
+    ]
 
 author = (
     "Yu Bai,"
