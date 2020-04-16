@@ -1,0 +1,39 @@
+Metadata-Version: 2.1
+Name: scireader
+Version: 0.0.2
+Summary: ScispaCy-based natural language processing pipeline for scientific literature mining
+Home-page: https://github.com/yubailibra/scireader
+Author: Yu Bai,Yunchen Yang
+Author-email: yubailibra@yahoo.com
+License: MIT license
+Description: # scireader
+        SciReader is a ScispaCy-based natural language processing pipeline for scientific literature mining. To help combat the COVID-19 pandemic, it has been applied to find the most relevant literature given a query research topic.
+        
+        ### Python Dependencies and Requirements:
+        [spacy: 2.2.1](https://github.com/explosion/spaCy)  
+        [scispacy: 0.2.4](https://github.com/allenai/scispacy)  
+        numpy: 1.17.4  
+        [wmd: 1.3.2](https://github.com/src-d/wmd-relax)  
+        pandas: 0.25.3  
+        scikit-learn: 0.21.3  
+        re: 2.2.1  
+        json: 2.0.9  
+        
+        
+        ### Recommeded pre-trained ScispaCy model:
+        [en_core_sci_lg: 0.2.4](https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.2.4/en_core_sci_lg-0.2.4.tar.gz)　　
+        
+        ### Installation
+        ```
+        pip install scireader
+        ```
+        
+Keywords: scireader
+Platform: UNKNOWN
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Natural Language :: English
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Programming Language :: Python :: 3.7
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown

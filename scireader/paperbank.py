@@ -1,3 +1,4 @@
+# paperbank
 import json
 import pandas as pd
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
@@ -10,7 +11,6 @@ class PaperBank:
         self.model = model
         self.text = []
         self.list_words = []
-        # self.allwords=[]
         self.sent_tokens = []
         self.vocabulary = self.model.vocab  # Vocab() #
 
@@ -24,7 +24,7 @@ class PaperBank:
                     dict_text['paper_id'].append(parsed['paper_id'])
                     dict_text['title'].append(parsed['title'])
                     dict_text['abstract'].append(parsed['abstract'])
-                    # dict_text['body_text'].append(parsed['title']+". "+parsed['abstract']+". "+parsed['body_text'])
+                    #dict_text['body_text'].append(parsed['title']+". "+parsed['abstract']+". "+parsed['body_text'])
                     dict_text['body_text'].append('')
                     dict_text['authors'].append(concatAuthors(parsed["authors"]))
             except:
@@ -35,7 +35,6 @@ class PaperBank:
     def parse(self, textfile='abstract'):
         # dictionary: {named entity: vector} from paper abstracts
         # ne2vec=[ent2vector(text, self.model) for text in self.text[textfile]]
-        # ne2vec=[enttoken2vector(text, self.model) for text in self.text[textfile]]
         ne2vec = [enttoken2vector(text, self.model) for text in self.text[textfile]]
         self.sent_tokens = [sublist[1] for sublist in ne2vec]
 
@@ -47,76 +46,28 @@ class PaperBank:
             self.vocabulary.set_vector(word, vector)
 
     def query(self, keyword, similarity, verbose=False):
-        allwords = list(set([item for sublist in self.list_words for item in sublist]))
-        keywords = [allwords[i] for i in range(len(allwords)) if re.search(keyword, allwords[i]) is not None]
+        allwords=list(set([item for sublist in self.list_words for item in sublist]))
+        keywords=[allwords[i] for i in range(len(allwords)) if re.search(keyword,allwords[i],re.IGNORECASE) is not None]
         if verbose:
-            print('keyword hits', keywords)
-        synonyms_hits = self.vocabulary.vectors.most_similar(queries=np.array([self.vocabulary.get_vector(keyword)]),
-                                                             sort=True, n=100)
-        synonyms = [self.vocabulary.strings.__getitem__(synonyms_hits[0][0][i]) for i in range(len(synonyms_hits[0][0]))
-                    if synonyms_hits[2][0][i] >= similarity]
-        synonyms = list(set(synonyms).difference(set(keywords)))
+            print('keyword hits:',keywords[0:min(20,len(keywords))],'...')
+        synonyms_hits=self.vocabulary.vectors.most_similar(queries=np.array([self.vocabulary.get_vector(keyword)]),sort=True,n=100)
+        synonyms=[self.vocabulary.strings.__getitem__(synonyms_hits[0][0][i]) for i in range(len(synonyms_hits[0][0])) if synonyms_hits[2][0][i]>=similarity]
+        synonyms=list(set(synonyms).difference(set(keywords)))
         if verbose:
-            print("\nadditional synonyms:", synonyms)
-        keywords.extend(synonyms)
+            print("\nsynonym hits:", synonyms[0:min(20,len(synonyms))],'...')
+        keywords.extend(list(set(synonyms).difference(set(keywords))))
 
-        ctVectorSingle = CountVectorizer(lowercase=True, analyzer=lambda l: l, vocabulary=keywords)
-        termFreq = ctVectorSingle.fit_transform(self.list_words).toarray().sum(axis=1).flatten()
+        ctVectorSingle=CountVectorizer(lowercase=True,analyzer=lambda l:l,vocabulary=keywords)
+        termFreq=ctVectorSingle.fit_transform(self.list_words).toarray().sum(axis=1).flatten()
 
-        df_termFreq = pd.Series(termFreq, index=self.text.index.values.tolist(), name='TermFreq')
-        sortedTF = df_termFreq[termFreq.nonzero()[0]].sort_values(axis=0, ascending=False)
+        df_termFreq=pd.Series(termFreq,index=self.text.index.values.tolist(),name='TermFreq')
+        sortedTF=df_termFreq[termFreq.nonzero()[0]].sort_values(axis=0, ascending=False)
         if verbose:
             print(sortedTF.shape[0])
-        sortedHitsByTF = self.text.loc[sortedTF.index.values.tolist(), ['title', 'abstract']]
-        sortedHitsByTF['TermFreq'] = sortedTF
+        sortedHitsByTF=self.text.loc[sortedTF.index.values.tolist(),['title','abstract']]
+        sortedHitsByTF['TermFreq']=sortedTF
         return sortedHitsByTF
 
-    def query_keywords(self, keyword, similarity=0.9, verbose=False):
-        paperids = self.text.index.values.tolist()
-        allwords = list(set([item for sublist in self.list_words for item in sublist]))
-        allstitched = [' '.join(sublist) for sublist in self.list_words]
-        keywords = [allwords[i] for i in range(len(allwords)) if re.search(keyword, allwords[i]) is not None]
-        if verbose:
-            print('\nkeyword hits', keywords)
-        cleankeyword = re.sub("\s+", " ", re.sub(r'[\.\*\(\)\[\]]', ' ',
-                                                 re.sub(r'\[-\\s\]', ' ', re.sub(r'\\b', '', keyword)))).lower().strip(
-            '.- ')
-        synonyms_hits = self.vocabulary.vectors.most_similar(
-            queries=np.array([self.vocabulary.get_vector(cleankeyword)]), sort=True, n=100)
-        synonyms = [self.vocabulary.strings.__getitem__(synonyms_hits[0][0][i]) for i in range(len(synonyms_hits[0][0]))
-                    if synonyms_hits[2][0][i] >= similarity]
-        synonyms = list(set(synonyms).difference(set(keywords)))
-        if verbose:
-            print("additional synonyms:", synonyms)
-        keywords.extend(synonyms)
-        # sitched
-        fromStiched = [paperids[i] for i in range(len(allstitched)) if re.search(keyword, allstitched[i]) is not None]
-
-        if len(keywords) == 0:
-            if verbose:
-                print(str(0) + ' keyword(' + keyword + ')+synonym' + ', ',
-                      str(len(fromStiched)) + ' hit by fromStiched')
-            fromStiched = [[h, keyword] for h in fromStiched]
-            return fromStiched
-        else:
-            ctVectorSingle = CountVectorizer(lowercase=True, analyzer=lambda l: l, vocabulary=keywords)
-            hitmat = ctVectorSingle.fit_transform(self.list_words).toarray()
-            termFreq = hitmat.sum(axis=1).flatten()
-
-            df_termFreq = pd.Series(termFreq, index=paperids, name='TermFreq')
-            sortedTF = df_termFreq[termFreq.nonzero()[0]]  # .sort_values(axis=0, ascending=False)
-            # hitmat=hitmat[np.where(termFreq>0),:]
-            if verbose:
-                print(str(sortedTF.shape[0]) + ' hit by keyword+synonym: ' + keyword + ', ',
-                      str(len(fromStiched)) + ' hit by fromStiched')
-            # sortedHitsByTF=self.text.loc[sortedTF.index.values.tolist(),['title','abstract']]
-            # sortedHitsByTF['TermFreq']=sortedTF
-            # finalhits=list(set(list(sortedHitsByTF.index)).union(set(fromStiched)))
-            finalhits = list(set(sortedTF.index.values.tolist()).union(set(fromStiched)))
-            finalhits = [[h, keyword] for h in finalhits]
-        if (finalhits is None or len(finalhits) == 0):
-            print(keyword)
-        return finalhits
 
     def clustering_tfidf(self, min_df=3, combine=False, sim_thre=0.95, max_features=2 ** 18):
         ctVectorSingle = CountVectorizer(lowercase=True, analyzer=lambda l: l, min_df=min_df, max_features=max_features)

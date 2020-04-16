@@ -1,0 +1,13 @@
+LICENSE
+MANIFEST.in
+README.md
+setup.py
+scireader/__init__.py
+scireader/paperbank.py
+scireader/tools.py
+scireader/utils.py
+scireader.egg-info/PKG-INFO
+scireader.egg-info/SOURCES.txt
+scireader.egg-info/dependency_links.txt
+scireader.egg-info/requires.txt
+scireader.egg-info/top_level.txt

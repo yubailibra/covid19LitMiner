@@ -1,6 +1,14 @@
 import collections
 import re
+import sys
 import numpy as np
+import scispacy
+from scispacy.abbreviation import AbbreviationDetector
+import en_core_sci_lg
+import glob
+import pandas as pd
+import numpy as np
+from wmd import WMD
 
 
 badpattern = re.compile('[%"]+')
@@ -130,242 +138,138 @@ def concatAuthors(authorlist):
 
 
 def ent2vector(text, nlp):
-    nes2vec = []
-    vec = []
+    nes2vec=[]
+    vec=[]
     try:
-        doc2 = nlp((text))
-        nes2vec = [[re.sub('[\(\)]', '', cleanStr(token.lemma_.lower())).strip('.- '), token.vector] for token in
-                   doc2.ents if (re.search('[a-zA-Z]', token.lemma_.lower()) is not None) and len(
-                re.sub('[\(\)]', '', cleanStr(token.lemma_.lower())).strip('.- ')) > 0]
-        abrvs3 = [[cleanStr(token.lemma_.lower()).strip('.- '), token.vector] for token in doc2._.abbreviations if
-                  (")" not in token.lemma_.lower()) and ("(" not in token.lemma_.lower()) and (
-                              re.search('[a-zA-Z]', token.lemma_.lower()) is not None) and len(
-                      cleanStr(token.lemma_.lower()).strip('.- ')) > 0]
+        doc2=nlp(cleanText(text))
+        nes2vec=[[re.sub('[\(\)]','',cleanStr(token.lemma_.lower())).strip('.- '),token.vector] for token in doc2.ents if (re.search('[a-zA-Z]',token.lemma_.lower()) is not None) and len(re.sub('[\(\)]','',cleanStr(token.lemma_.lower())).strip('.- '))>0]
+        abrvs3=[[cleanStr(token.lemma_.lower()).strip('.- '),token.vector] for token in doc2._.abbreviations if (")" not in token.lemma_.lower()) and ("(" not in token.lemma_.lower()) and (re.search('[a-zA-Z]',token.lemma_.lower()) is not None) and len(cleanStr(token.lemma_.lower()).strip('.- '))>0]
         nes2vec.extend(abrvs3)
-        currentWords = set([each[0] for each in nes2vec])
-        abrvs2 = [[cleanStr(token._.long_form.lemma_.lower()).strip('.- '), token._.long_form.vector] for token in
-                  doc2._.abbreviations if (token._.long_form.lemma_.lower() not in currentWords) and (
-                              ")" not in token._.long_form.lemma_.lower()) and (
-                              "(" not in token._.long_form.lemma_.lower()) \
-                  and (re.search('[a-zA-Z]', token.lemma_.lower()) is not None) and (
-                              re.search('\s+', token.lemma_.lower().strip()) is None) and (
-                              re.search(token._.long_form.lemma_.lower().strip('.- '),
-                                        text.lower()) is not None) and len(
-                cleanStr(token._.long_form.lemma_.lower()).strip('.- ')) > 0]  #
-        terms = [abrvs2[i][0] for i in range(len(abrvs2))]
-        keepIndex = [terms.index(uniq) for uniq in set(terms)]
+        currentWords=set([each[0] for each in nes2vec])
+        abrvs2=[[cleanStr(token._.long_form.lemma_.lower()).strip('.- '),token._.long_form.vector] for token in doc2._.abbreviations if (token._.long_form.lemma_.lower() not in currentWords) and (")" not in token._.long_form.lemma_.lower()) and  ("(" not in token._.long_form.lemma_.lower()) \
+                         and (re.search('[a-zA-Z]',token.lemma_.lower()) is not None) and (re.search('\s+',token.lemma_.lower().strip()) is None) and (re.search(token._.long_form.lemma_.strip('.- '), text,re.IGNORECASE) is not None) and len(cleanStr(token._.long_form.lemma_.lower()).strip('.- '))>0] #
+        terms=[abrvs2[i][0] for i in range(len(abrvs2))]
+        keepIndex=[terms.index(uniq) for uniq in set(terms)]
         [abrvs2[i] for i in keepIndex]
         nes2vec.extend([abrvs2[i] for i in keepIndex])
     except:
-        print('cannot parse text:', text[:min(20, len(text))])
-    return nes2vec
+        1#print('cannot parse text:', text[:min(20, len(text))])
+    return nes2vec,[]
 
 
-def enttoken2vector(text, nlp):
-    nes2vec = []
-    sent_tokens = []
+def enttoken2vector(text,nlp):
+    nes2vec=[]
+    sent_tokens=[]
     try:
-        doc = nlp((text))
+        doc=nlp(cleanText(text))
 
-        abrvs3 = [[cleanStr(token.lemma_.lower()).strip('.- '), token.vector] for token in doc._.abbreviations if
-                  (")" not in token.lemma_.lower()) and ("(" not in token.lemma_.lower()) and (
-                              re.search('[a-zA-Z]', token.lemma_.lower()) is not None) and len(
-                      cleanStr(token.lemma_.lower()).strip('.- ')) > 0]
+        abrvs3=[[cleanStr(token.lemma_.lower()).strip('.- '),token.vector] for token in doc._.abbreviations if (")" not in token.lemma_.lower()) and ("(" not in token.lemma_.lower()) and (re.search('[a-zA-Z]',token.lemma_.lower()) is not None) and len(cleanStr(token.lemma_.lower()).strip('.- '))>0]
         nes2vec.extend(abrvs3)
-        currentWords = set([each[0] for each in nes2vec])
+        currentWords=set([each[0] for each in nes2vec])
 
-        ne2vec = [[re.sub('[\(\)]', '', cleanStr(token.lemma_.lower())).strip('.- '), token.vector] for token in
-                  doc.ents if (re.search('[a-zA-Z]', token.lemma_.lower()) is not None) and len(
-                re.sub('[\(\)]', '', cleanStr(token.lemma_.lower())).strip('.- ')) > 0 and re.sub('[\(\)]', '',
-                                                                                                  cleanStr(
-                                                                                                      token.lemma_.lower())).strip(
-                '.- ') not in currentWords]
+        #ne2vec=[[re.sub('[\(\)]','',cleanStr(token.lemma_.lower())).strip('.- '),token.vector] for token in doc.ents if (re.search('[a-zA-Z]',token.lemma_.lower()) is not None) and len(re.sub('[\(\)]','',cleanStr(token.lemma_.lower())).strip('.- '))>0 and re.sub('[\(\)]','',cleanStr(token.lemma_.lower())).strip('.- ') not in currentWords]
+        ne2vec=[[re.sub('[\(\)]','',cleanStr(token.lemma_.lower())).strip('.- '),token.vector] for token in doc.ents if (re.search('[a-zA-Z]',token.lemma_.lower()) is not None) and len(re.sub('[\(\)]','',cleanStr(token.lemma_.lower())).strip('.- '))>0]
         nes2vec.extend(ne2vec)
-        currentWords = set([each[0] for each in nes2vec])
+        currentWords=set([each[0] for each in nes2vec])
         ## add in tokens
-        sent_tokens = []
-        for sent in doc.sents:
-            tokens_per_sent = [re.sub('[\(\)]', '', cleanStr(token.lemma_.lower())).strip('.- ') for token in sent if
-                               (token.pos_ not in ('PUNCT', 'NUM', 'SYM')) and (not token.is_bracket) and (
-                                   not token.is_left_punct) and (not token.is_oov) and (not token.is_punct) and \
-                               (not token.is_quote) and (not token.is_right_punct) and (not token.is_space) and (
-                                   not token.is_stop) and (re.search('[a-zA-Z]', token.lemma_.lower()) is not None) and \
-                               len(re.sub('[\(\)]', '', cleanStr(token.lemma_.lower()).strip('.- '))) > 1]
-            if len(tokens_per_sent) > 0:
+        sent_tokens=[]
+        for sent in doc.sents: # and (not token.is_oov)
+            tokens_per_sent=[re.sub('[\(\)]','',cleanStr(token.lemma_.lower())).strip('.- ') for token in sent if (token.pos_  not in ('PUNCT', 'NUM', 'SYM')) and (not token.is_bracket) and (not token.is_left_punct) and (not token.is_punct) and \
+                (not token.is_quote) and (not token.is_right_punct) and (not token.is_space) and (not token.is_stop) and (re.search('[a-zA-Z]',token.lemma_.lower()) is not None) and \
+               len(re.sub('[\(\)]','',cleanStr(token.lemma_.lower()).strip('.- ')))>1]
+            if len(tokens_per_sent)>0:
                 sent_tokens.append(tokens_per_sent)
-        token2vec = [[re.sub('[\(\)]', '', cleanStr(token.lemma_.lower())).strip('.- '), token.vector] for token in doc
-                     if (token.pos_ not in ('PUNCT', 'NUM', 'SYM')) and (not token.is_bracket) and (
-                         not token.is_left_punct) and (not token.is_oov) and (not token.is_punct) and \
-                     (not token.is_quote) and (not token.is_right_punct) and (not token.is_space) and (
-                         not token.is_stop) and (re.search('[a-zA-Z]', token.lemma_.lower()) is not None) and \
-                     len(re.sub('[\(\)]', '', cleanStr(token.lemma_.lower()).strip('.- '))) > 1 and re.sub('[\(\)]', '',
-                                                                                                           cleanStr(
-                                                                                                               token.lemma_.lower())).strip(
-                '.- ') not in currentWords]
+        token2vec = [[re.sub('[\(\)]','',cleanStr(token.lemma_.lower())).strip('.- '),token.vector] for token in doc if (token.pos_  not in ('PUNCT', 'NUM', 'SYM')) and (not token.is_bracket) and (not token.is_left_punct) and (not token.is_punct) and \
+                (not token.is_quote) and (not token.is_right_punct) and (not token.is_space) and (not token.is_stop) and (re.search('[a-zA-Z]',token.lemma_.lower()) is not None) and \
+               len(re.sub('[\(\)]','',cleanStr(token.lemma_.lower()).strip('.- ')))>1 and re.sub('[\(\)]','',cleanStr(token.lemma_.lower())).strip('.- ') not in currentWords]
         nes2vec.extend(token2vec)
-        currentWords = set([each[0] for each in nes2vec])
+        currentWords=set([each[0] for each in nes2vec])
 
-        abrvs2 = [[cleanStr(token._.long_form.lemma_.lower()).strip('.- '), token._.long_form.vector] for token in
-                  doc._.abbreviations if
-                  (cleanStr(token._.long_form.lemma_.lower()).strip('.- ') not in currentWords) and (
-                              ")" not in token._.long_form.lemma_.lower()) and (
-                              "(" not in token._.long_form.lemma_.lower()) \
-                  and (re.search('[a-zA-Z]', token.lemma_.lower()) is not None) and (
-                              re.search('\s+', token.lemma_.lower().strip()) is None) and (
-                              re.search(token._.long_form.lemma_.lower().strip('.- '),
-                                        text.lower()) is not None) and len(
-                      cleanStr(token._.long_form.lemma_.lower()).strip('.- ')) > 0]  #
-        terms = [abrvs2[i][0] for i in range(len(abrvs2))]
-        keepIndex = [terms.index(uniq) for uniq in set(terms)]
-        # [abrvs2[i] for i in keepIndex]
+        abrvs2=[[cleanStr(token._.long_form.lemma_.lower()).strip('.- '),token._.long_form.vector] for token in doc._.abbreviations if (cleanStr(token._.long_form.lemma_.lower()).strip('.- ') not in currentWords) and (")" not in token._.long_form.lemma_.lower()) and  ("(" not in token._.long_form.lemma_.lower()) \
+                         and (re.search('[a-zA-Z]',token.lemma_.lower()) is not None) and (re.search('\s+',token.lemma_.lower().strip()) is None) and (re.search(token._.long_form.lemma_.strip('.- '), text, re.IGNORECASE) is not None) and len(cleanStr(token._.long_form.lemma_.lower()).strip('.- '))>0] #
+        terms=[abrvs2[i][0] for i in range(len(abrvs2))]
+        keepIndex=[terms.index(uniq) for uniq in set(terms)]
         nes2vec.extend([abrvs2[i] for i in keepIndex])
-
     except:
-        print('cannot parse text:', text[:min(20, len(text))])
-    return nes2vec, sent_tokens
+        1#print('cannot parse text:', text[:min(20, len(text))])
+    return nes2vec,sent_tokens
 
+def ent2vectorCaseSensitive(text,nlp):
+    nes2vec=[]
+    vec=[]
+    try:
+        doc2=nlp(cleanText(text))
+        nes2vec=[[re.sub('[\(\)]','',cleanStr(token.lemma_)).strip('.- '),token.vector] for token in doc2.ents if (re.search('[a-zA-Z]',token.lemma_.lower()) is not None) and len(re.sub('[\(\)]','',cleanStr(token.lemma_.lower())).strip('.- '))>0]
+        abrvs3=[[cleanStr(token.lemma_).strip('.- '),token.vector] for token in doc2._.abbreviations if (")" not in token.lemma_.lower()) and ("(" not in token.lemma_.lower()) and (re.search('[a-zA-Z]',token.lemma_.lower()) is not None) and len(cleanStr(token.lemma_.lower()).strip('.- '))>0]
+        nes2vec.extend(abrvs3)
+        currentWords=set([each[0] for each in nes2vec])
+        abrvs2=[[cleanStr(token._.long_form.lemma_).strip('.- '),token._.long_form.vector] for token in doc2._.abbreviations if (token._.long_form.lemma_.lower() not in currentWords) and (")" not in token._.long_form.lemma_.lower()) and  ("(" not in token._.long_form.lemma_.lower()) \
+                         and (re.search('[a-zA-Z]',token.lemma_.lower()) is not None) and (re.search('\s+',token.lemma_.lower().strip()) is None) and (re.search(token._.long_form.lemma_.strip('.- '), text,re.IGNORECASE) is not None) and len(cleanStr(token._.long_form.lemma_.lower()).strip('.- '))>0] #
+        terms=[abrvs2[i][0] for i in range(len(abrvs2))]
+        keepIndex=[terms.index(uniq) for uniq in set(terms)]
+        [abrvs2[i] for i in keepIndex]
+        nes2vec.extend([abrvs2[i] for i in keepIndex])
+    except:
+        1#print('cannot parse text:', text[:min(20, len(text))])
+    return nes2vec,[]
 
 def entRelaxToken2vector(text, nlp):
-    nes2vec = []
-    sent_tokens = []
+    nes2vec=[]
+    sent_tokens=[]
     try:
-        doc = nlp((text))
+        doc=nlp(cleanText(text))
 
-        abrvs3 = [[cleanStr(token.lemma_.lower()).strip('.- '), token.vector] for token in doc._.abbreviations if
-                  (")" not in token.lemma_.lower()) and ("(" not in token.lemma_.lower()) and (
-                              re.search('[a-zA-Z]', token.lemma_.lower()) is not None) and len(
-                      cleanStr(token.lemma_.lower()).strip('.- ')) > 0]
+        abrvs3=[[cleanStr(token.lemma_.lower()).strip('.- '),token.vector] for token in doc._.abbreviations if (")" not in token.lemma_.lower()) and ("(" not in token.lemma_.lower()) and (re.search('[a-zA-Z]',token.lemma_.lower()) is not None) and len(cleanStr(token.lemma_.lower()).strip('.- '))>0]
         nes2vec.extend(abrvs3)
-        currentWords = set([each[0] for each in nes2vec])
+        currentWords=set([each[0] for each in nes2vec])
 
-        ne2vec = [[re.sub('[\(\)]', '', cleanStr(token.lemma_.lower())).strip('.- '), token.vector] for token in
-                  doc.ents if (re.search('[a-zA-Z]', token.lemma_.lower()) is not None) and len(
-                re.sub('[\(\)]', '', cleanStr(token.lemma_.lower())).strip('.- ')) > 0 and re.sub('[\(\)]', '',
-                                                                                                  cleanStr(
-                                                                                                      token.lemma_.lower())).strip(
-                '.- ') not in currentWords]
+        ne2vec=[[re.sub('[\(\)]','',cleanStr(token.lemma_.lower())).strip('.- '),token.vector] for token in doc.ents if (re.search('[a-zA-Z]',token.lemma_.lower()) is not None) and len(re.sub('[\(\)]','',cleanStr(token.lemma_.lower())).strip('.- '))>0 and re.sub('[\(\)]','',cleanStr(token.lemma_.lower())).strip('.- ') not in currentWords]
         nes2vec.extend(ne2vec)
-        currentWords = set([each[0] for each in nes2vec])
+        currentWords=set([each[0] for each in nes2vec])
         ## add in tokens
-        sent_tokens = []
-        for sent in doc.sents:  # and (not token.is_stop)
-            tokens_per_sent = [re.sub('[\(\)]', '', cleanStr(token.lemma_.lower())).strip('.- ') for token in sent if
-                               (token.pos_ not in ('PUNCT', 'NUM', 'SYM')) and (not token.is_bracket) and (
-                                   not token.is_left_punct) and (not token.is_oov) and (not token.is_punct) and \
-                               (not token.is_quote) and (not token.is_right_punct) and (not token.is_space) and (
-                                           re.search('[a-zA-Z]', token.lemma_.lower()) is not None) and \
-                               len(re.sub('[\(\)]', '', cleanStr(token.lemma_.lower()).strip('.- '))) > 1]
-            if len(tokens_per_sent) > 0:
+        sent_tokens=[]
+        for sent in doc.sents: #and (not token.is_stop)
+            tokens_per_sent=[re.sub('[\(\)]','',cleanStr(token.lemma_.lower())).strip('.- ') for token in sent if (token.pos_  not in ('PUNCT', 'NUM', 'SYM')) and (not token.is_bracket) and (not token.is_left_punct) and (not token.is_punct) and \
+                (not token.is_quote) and (not token.is_right_punct) and (not token.is_space) and (re.search('[a-zA-Z]',token.lemma_.lower()) is not None) and \
+               len(re.sub('[\(\)]','',cleanStr(token.lemma_.lower()).strip('.- ')))>1]
+            if len(tokens_per_sent)>0:
                 sent_tokens.append(tokens_per_sent)
-        token2vec = [[re.sub('[\(\)]', '', cleanStr(token.lemma_.lower())).strip('.- '), token.vector] for token in doc
-                     if (token.pos_ not in ('PUNCT', 'NUM', 'SYM')) and (not token.is_bracket) and (
-                         not token.is_left_punct) and (not token.is_oov) and (not token.is_punct) and \
-                     (not token.is_quote) and (not token.is_right_punct) and (not token.is_space) and (
-                                 re.search('[a-zA-Z]', token.lemma_.lower()) is not None) and \
-                     len(re.sub('[\(\)]', '', cleanStr(token.lemma_.lower()).strip('.- '))) > 1 and re.sub('[\(\)]', '',
-                                                                                                           cleanStr(
-                                                                                                               token.lemma_.lower())).strip(
-                '.- ') not in currentWords]
+        token2vec = [[re.sub('[\(\)]','',cleanStr(token.lemma_.lower())).strip('.- '),token.vector] for token in doc if (token.pos_  not in ('PUNCT', 'NUM', 'SYM')) and (not token.is_bracket) and (not token.is_left_punct) and (not token.is_punct) and \
+                (not token.is_quote) and (not token.is_right_punct) and (not token.is_space) and (re.search('[a-zA-Z]',token.lemma_.lower()) is not None) and \
+               len(re.sub('[\(\)]','',cleanStr(token.lemma_.lower()).strip('.- ')))>1 and re.sub('[\(\)]','',cleanStr(token.lemma_.lower())).strip('.- ') not in currentWords]
         nes2vec.extend(token2vec)
-        currentWords = set([each[0] for each in nes2vec])
+        currentWords=set([each[0] for each in nes2vec])
 
-        abrvs2 = [[cleanStr(token._.long_form.lemma_.lower()).strip('.- '), token._.long_form.vector] for token in
-                  doc._.abbreviations if
-                  (cleanStr(token._.long_form.lemma_.lower()).strip('.- ') not in currentWords) and (
-                              ")" not in token._.long_form.lemma_.lower()) and (
-                              "(" not in token._.long_form.lemma_.lower()) \
-                  and (re.search('[a-zA-Z]', token.lemma_.lower()) is not None) and (
-                              re.search('\s+', token.lemma_.lower().strip()) is None) and (
-                              re.search(token._.long_form.lemma_.lower().strip('.- '),
-                                        text.lower()) is not None) and len(
-                      cleanStr(token._.long_form.lemma_.lower()).strip('.- ')) > 0]  #
-        terms = [abrvs2[i][0] for i in range(len(abrvs2))]
-        keepIndex = [terms.index(uniq) for uniq in set(terms)]
-        # [abrvs2[i] for i in keepIndex]
+        abrvs2=[[cleanStr(token._.long_form.lemma_.lower()).strip('.- '),token._.long_form.vector] for token in doc._.abbreviations if (cleanStr(token._.long_form.lemma_.lower()).strip('.- ') not in currentWords) and (")" not in token._.long_form.lemma_.lower()) and  ("(" not in token._.long_form.lemma_.lower()) \
+                         and (re.search('[a-zA-Z]',token.lemma_.lower()) is not None) and (re.search('\s+',token.lemma_.lower().strip()) is None) and (re.search(token._.long_form.lemma_.strip('.- '), text,re.IGNORECASE) is not None) and len(cleanStr(token._.long_form.lemma_.lower()).strip('.- '))>0] #
+        terms=[abrvs2[i][0] for i in range(len(abrvs2))]
+        keepIndex=[terms.index(uniq) for uniq in set(terms)]
         nes2vec.extend([abrvs2[i] for i in keepIndex])
-
     except:
-        print('cannot parse text:', text[:min(20, len(text))])
-    return nes2vec, sent_tokens
-
-
-def my_sentence_analyzer(text, nlp):
-    sentences = []
-    sent_docs = []
-    try:
-        doc = nlp(text)
-        sentences = [' '.join([re.sub('[\(\)]', '', cleanStr(token.lemma_.lower())).strip('.- ') for token in sent if
-                               (token.pos_ not in ('PUNCT', 'NUM', 'SYM')) and (not token.is_bracket) and (
-                                   not token.is_left_punct) and (not token.is_oov) and (not token.is_punct) and \
-                               (not token.is_quote) and (not token.is_right_punct) and (not token.is_space) and (
-                                   not token.is_stop) and (re.search('[a-zA-Z]', token.lemma_.lower()) is not None) and \
-                               len(re.sub('[\(\)]', '', cleanStr(token.lemma_.lower()).strip('.- '))) > 1]) for sent in
-                     doc.sents]
-    except:
-        print('cannot tokenize text:', text[:min(20, len(text))])
-    return sentences
-
-
-def my_tokenBySent_analyzer(text, nlp):
-    sent_tokens = []
-    try:
-        doc = nlp(text)
-        sent_tokens = [[re.sub('[\(\)]', '', cleanStr(token.lemma_.lower())).strip('.- ') for token in sent if
-                        (token.pos_ not in ('PUNCT', 'NUM', 'SYM')) and (not token.is_bracket) and (
-                            not token.is_left_punct) and (not token.is_oov) and (not token.is_punct) and \
-                        (not token.is_quote) and (not token.is_right_punct) and (not token.is_space) and (
-                            not token.is_stop) and (re.search('[a-zA-Z]', token.lemma_.lower()) is not None) and \
-                        len(re.sub('[\(\)]', '', cleanStr(token.lemma_.lower()).strip('.- '))) > 1] for sent in
-                       doc.sents]
-
-    except:
-        print('cannot tokenize text:', text[:min(20, len(text))])
-    return sent_tokens
-
-#todo: fix https/web site, copyright, preprint, bioaXiv staff, acknowledge etc
+        1#print('cannot parse text:', text[:min(20, len(text))])
+    return nes2vec,sent_tokens
 
 
 def cleanStr(text):
-    cleaned = re.sub('[^a-zA-z0-9\s\.\-/\(\)]', '', re.sub('\d+[\.\d\s]*-[\s\d\.]*', '',
-                                                           re.sub(r'\s+[\-\+]\d+[\.\d]*\b', '',
-                                                                  re.sub('\d+[\.\d\s-]*kda', '',
-                                                                         re.sub('\d+[\.\d\s-]*bp', '',
-                                                                                re.sub('\d+[\.\d\s-]*kbp', '',
-                                                                                       re.sub('/', ' ',
-                                                                                              re.sub('\s\s', ' ',
-                                                                                                     re.sub('\(', ' (',
-                                                                                                            re.sub(
-                                                                                                                '(copy.*right|preprint|\\bbiorxiv\\b|\\bbioRxiv\\b|\\bmedrxiv\\b|\\bmedRxiv\\b|acknowledgement|palabra.*clave|\\bhttps\\b|\\bhttp\\b)',
-                                                                                                                '',
-                                                                                                                text)))))))))).strip()
+    cleaned=re.sub('[^a-zA-z0-9\s\.\-/\(\)]','',re.sub('\d+[\.\d\s]*-[\s\d\.]*','',re.sub(r'\s+[\-\+]\d+[\.\d]*\b','',re.sub('\d+[\.\d\s-]*kda','',re.sub('\d+[\.\d\s-]*bp','',re.sub('\d+[\.\d\s-]*kbp','',re.sub('/',' ',re.sub('\s\s',' ',re.sub('\(',' (',re.sub('(copy.*right|preprint|\\bbiorxiv\\b|\\bbioRxiv\\b|\\bmedrxiv\\b|\\bmedRxiv\\b|acknowledgement|palabra.*clave|\\bhttps\\b|\\bhttp\\b)','',text)))))))))).strip()
+    return cleaned
+
+def cleanText(text):
+    cleaned=re.sub('publicly.*funded.*repositories.*such.*as.*the.*WHO.*COVID.*database.*with.*rights.*for.*unrestricted.*research.*re-use.*analyses.*in.*any.*form.*original source.',' ',text,re.IGNORECASE)
+    cleaned=re.sub('These.*permissions.*are.*granted.*for.*Elsevier.*for.*as.*long.*as.*the.*COVID-19.*resource.*centre.*remains.*active.',' ',cleaned,re.IGNORECASE)
     return cleaned
 
 
-def getEnt(text, nlp):
-    nes = []
+def my_token_analyzer(text, nlp):  # re.sub('[<{\(\[]\s*\d+[\.\d/]*\s*[\]\)}>]','',and (not token.is_oov)
+    tokens=[]
     try:
-        doc2 = nlp((text))
-        nes = [re.sub('[\(\)]', '', cleanStr(token.lemma_.lower())).strip('.- ') for token in doc2.ents if
-               (re.search('[a-zA-Z]', token.lemma_.lower()) is not None) and len(
-                   re.sub('[\(\)]', '', cleanStr(token.lemma_.lower())).strip('.- ')) > 0]
+        doc=nlp(cleanText(text))
+        #nlp(re.sub('[^a-zA-z0-9\s\.\-/]','',re.sub('\d+[\.\d\s]*-[\s\d\.]*','',re.sub(r'\s+[\-\+]\d+[\.\d]*\b','',re.sub('\d+[\.\d\s-]*kda','',re.sub('\d+[\.\d\s-]*bp','',re.sub('\d+[\.\d\s-]*kbp','',re.sub('\(',' (',text))))))).strip())
+        tokens=[re.sub('[\(\)]','',cleanStr(token.lemma_.lower())).strip('.- ') for token in doc if (token.pos_  not in ('PUNCT', 'NUM', 'SYM')) and (not token.is_bracket) and (not token.is_left_punct)  and (not token.is_punct) and \
+                (not token.is_quote) and (not token.is_right_punct) and (not token.is_space) and (not token.is_stop) and (re.search('[a-zA-Z]',token.lemma_.lower()) is not None) and \
+                len(re.sub('[\(\)]','',cleanStr(token.lemma_.lower()).strip('.- ')))>1]
     except:
-        print('cannot parse text:', text[:min(20, len(text))])
-    return nes
-
-
-def my_token_analyzer(text, nlp):  # re.sub('[<{\(\[]\s*\d+[\.\d/]*\s*[\]\)}>]','',
-    tokens = []
-    try:
-        doc = nlp(text)
-        # nlp(re.sub('[^a-zA-z0-9\s\.\-/]','',re.sub('\d+[\.\d\s]*-[\s\d\.]*','',re.sub(r'\s+[\-\+]\d+[\.\d]*\b','',re.sub('\d+[\.\d\s-]*kda','',re.sub('\d+[\.\d\s-]*bp','',re.sub('\d+[\.\d\s-]*kbp','',re.sub('\(',' (',text))))))).strip())
-        tokens = [re.sub('[\(\)]', '', cleanStr(token.lemma_.lower())).strip('.- ') for token in doc if
-                  (token.pos_ not in ('PUNCT', 'NUM', 'SYM')) and (not token.is_bracket) and (
-                      not token.is_left_punct) and (not token.is_oov) and (not token.is_punct) and \
-                  (not token.is_quote) and (not token.is_right_punct) and (not token.is_space) and (
-                      not token.is_stop) and (re.search('[a-zA-Z]', token.lemma_.lower()) is not None) and \
-                  len(re.sub('[\(\)]', '', cleanStr(token.lemma_.lower()).strip('.- '))) > 1]
-    except:
-        print('cannot tokenize text:', text[:min(20, len(text))])
+        1#print('cannot tokenize text:', text[:min(20, len(text))])
     return tokens
 
 
