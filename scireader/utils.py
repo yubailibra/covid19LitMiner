@@ -1,14 +1,8 @@
 import collections
 import re
-import sys
+
 import numpy as np
-import scispacy
-from scispacy.abbreviation import AbbreviationDetector
-import en_core_sci_lg
-import glob
-import pandas as pd
-import numpy as np
-from wmd import WMD
+
 
 
 badpattern = re.compile('[%"]+')
