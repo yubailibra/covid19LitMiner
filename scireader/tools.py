@@ -2,6 +2,7 @@
 
 from spacy.tokens import Doc
 from sklearn.feature_extraction.text import CountVectorizer
+import pandas as pd
 from scireader.utils import *
 import re
 
