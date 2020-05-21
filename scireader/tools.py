@@ -32,7 +32,7 @@ def query_keywords(bank, keyword, similarity=0.9, verbose=False, display=False):
 
     if len(keywords) == 0:
         if verbose:
-            1  # print(str(0) + ' keyword(' + keyword + ')+synonym' + ', ',
+            print(str(0) + ' keyword(' + keyword + ')+synonym')# + ', ',
             #      str(len(fromStiched)) + ' hit by fromStiched')
         fromStiched = [[h, keyword] for h in fromStiched]
         return fromStiched
