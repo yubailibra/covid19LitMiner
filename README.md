@@ -1,6 +1,5 @@
-|PyPI|
-.. |PyPI| image:: https://img.shields.io/badge/PyPI-0.0.4-yellow
-    :target: https://pypi.org/project/scireader/
+[![](https://img.shields.io/badge/PyPI-0.0.4-yellow)](https://pypi.org/project/scireader/）
+
 ### Amid the COVID-19 pandemic, staying informed with the most relevant, up-to-date research and clinical outcomes is critical to life saving and crisis management. However, navigating through an already vast volume of literature that continues to grow in a head-spinnig speed is extremely difficult, preventing a timely information sharing and decision making. Aiming to trackle this challenge, in this work, we employ a semantic text mining approach to efficiently allocate and digest the most relevant literature given a query research task.
 
 # scireader
